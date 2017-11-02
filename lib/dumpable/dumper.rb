@@ -50,10 +50,13 @@ module Dumpable
           if reflection.macro == :belongs_to
             object.send("#{reflection.association_foreign_key}=", object.id + @id_padding)
           elsif [:has_many, :has_one].include? reflection.macro
-            if reflection.respond_to?(:foreign_key)
-              child_object.send("#{reflection.foreign_key}=", object.id + @id_padding)
-            else
-              child_object.send("#{reflection.primary_key_name}=", object.id + @id_padding)
+            # for a has_many through, leave the foreign key as-is
+            unless reflection.options[:through].present?
+              if reflection.respond_to?(:foreign_key)
+                child_object.send("#{reflection.foreign_key}=", object.id + @id_padding)
+              else
+                child_object.send("#{reflection.primary_key_name}=", object.id + @id_padding)
+              end
             end
           end
           @lines << generate_insert_query(child_object)
