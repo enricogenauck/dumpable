@@ -128,9 +128,10 @@ module Dumpable
       keys = key_values.collect{ |item| "`#{item[0]}`" }.join(", ")
       values = key_values.collect{ |item| item[1].to_s }.join(", ")
 
-      "INSERT INTO #{object.class.table_name} (#{ keys }) VALUES (#{ values });"
+      "INSERT #{ "IGNORE " if @options[:ignore_existing] }INTO #{object.class.table_name} (#{ keys }) VALUES (#{ values });"
     end
 
+    # ---------------------------------------------------------------------------
     # http://invisipunk.blogspot.com/2008/04/activerecord-raw-insertupdate.html
     def dump_value_string(value)
       case value.class.to_s
@@ -141,7 +142,9 @@ module Dumpable
         when "Fixnum"
           value
         when "String"
-          "'#{value.gsub(/'/, "\\\\'")}'"
+          # String can't end with a backslash or it fouls up mysql parsing, and if we have a
+          # single apostrophe, escape it:
+          "'#{ value.gsub(/'/, "\\\\'").gsub(/[\\]+$/, "") }'"
         when "FalseClass"
           '0'
         when "TrueClass"

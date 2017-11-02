@@ -12,6 +12,7 @@ module Dumpable
   @@config.id_padding = 0
   @@config.limit = 10_000
   @@config.order = nil
+  @@config.ignore_existing = false
 
   def self.dump(*records_and_collections)
     Dumpable::Dumper.dump(*records_and_collections)
