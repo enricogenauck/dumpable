@@ -4,6 +4,7 @@ gem "activerecord"
 gem "hashie"
 
 group :development do
+  gem "byebug"
   gem "shoulda", ">= 0"
   gem "rdoc", "~> 3.12"
   gem "jeweler"
