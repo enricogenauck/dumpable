@@ -16,7 +16,7 @@ and choose which associations to dump with those rows.
 Add the following to your Gemfile:
   gem 'dumpable'
 
-== Usage
+== General Usage
 The dumpable gem will automatically add the class method #dumpable and the instance method #dump into all your 
 ActiveRecord models.
 
@@ -49,10 +49,6 @@ Then, from the console, you can do something like:
   User.first.dump
 This will spit out all the MySQL insertion code for the user, it's roles, it's posts, and each post's comments
 
-If you want each record to pad the ids generated in the insertion code, this can be done as follows:
-  User.first.dump(:id_padding => 1000)
-This will ensure that the id of the above user is padded by 1000, so a user id of 1 will generate an insert statement with an id of 1001.
-
 You may wonder why the id is included as part of the insert statement. This is to ensure that all associations maintain their relationship to one another.
 
 All ActiveRecord models are dumpable automatically, so you could also call:
@@ -64,6 +60,13 @@ You can also dump all the entries in the table by calling:
   Post.dump
   # or with conditions
   Post.where(:published => true).dump
+
+== Options
+Dumpable takes the following options
+
+  `file`: Path to the file you'd like SQL dumped to
+  `id_padding`: A constant to add to the keys being dumped. For example, if `id_padding: 1000`, this will ensure that the id of the above user is padded by 1000, so a user id of 1 will generate an insert statement with an id of 1001.
+  `limit`: The maximum number of associations to be dumped for a given record. Default is 10,000
 
 == Dumping to a sql file
   User.dump(:file => PATH_TO_FILE)

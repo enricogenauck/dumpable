@@ -52,14 +52,14 @@ module Dumpable
       if dumps.nil?
         # Base case recursion
       elsif dumps.is_a?(Array)
-        dumps.each do |mini_dump|
-          recursive_dump(object, mini_dump)
+        dumps.each do |relation|
+          recursive_dump(object, relation)
         end
       elsif dumps.is_a?(Hash)
         dumps.each do |key, value|
           recursive_dump(object, key)
 
-          Array(object.send(key).includes(value)).each do |child|
+          Array(scoped_query(object, key).includes(value)).each do |child|
             recursive_dump(child, value)
           end
         end
@@ -67,9 +67,8 @@ module Dumpable
         # E.g., object is `User`, dumps is `:posts`, so here we'll iterate over every post instance
         # (here named `child_object`) and set its foreign key to correspond with the parent instance (usually
         # the instance that invoked the call to dump, unless we're deeper in recursion when we arrive here)
-        Array(object.send(dumps)).each do |child_object|
-          reflection = object.class.reflections.symbolize_keys[dumps.to_sym]
-
+        reflection = object.class.reflections.symbolize_keys[dumps.to_sym]
+        Array(scoped_query(object, dumps)).each do |child_object|
           unless reflection
             raise %{Couldn't find reflection "#{ dumps }" for object #{ object.inspect }}
           end
@@ -89,6 +88,25 @@ module Dumpable
           @lines << generate_insert_query(child_object)
         end
       end
+    rescue => e
+      puts "Error during processing: #{$!}"
+      puts "Backtrace:\n\t#{ e.backtrace.join("\n\t") }" # Avoid falling victim to the "... 15 other levels ..." stacktrace
+      raise
+    end
+
+    # ---------------------------------------------------------------------------
+    def scoped_query(object, key)
+      unless (reflection = object.class.reflections.symbolize_keys[key.to_sym])
+        raise "Couldn't find reflection: #{ key }"
+      end
+
+      scope = object.send(key)
+      if reflection.macro == :has_many
+        scope = scope.limit(@options.limit) if @options.limit
+        scope = scope.order(@options.order) if @options.order
+      end
+
+      scope
     end
 
     # ---------------------------------------------------------------------------
