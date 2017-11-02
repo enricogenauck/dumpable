@@ -2,6 +2,7 @@ module Dumpable
   class Dumper
     attr_accessor :dumpee, :options, :id_padding, :dumps
 
+    # ---------------------------------------------------------------------------
     def initialize(dumpee, options={})
       @dumpee = dumpee
       @options = Dumpable.config.merge(options || {})
@@ -10,14 +11,22 @@ module Dumpable
       @lines = []
     end
 
+    # ---------------------------------------------------------------------------
     def dump
       recursive_dump(@dumpee, @dumps)
       @lines << generate_insert_query(@dumpee)
     end
 
+    # ---------------------------------------------------------------------------
     def self.dump(*records_and_collections)
       options = records_and_collections.extract_options!
       lines = []
+
+      # Clear file before we start appending to it
+      if (file_name = options[:file]).present?
+        File.delete(file_name) if File.exists?(file_name)
+      end
+
       records_and_collections.each do |record_or_collection|
         if record_or_collection.is_a?(Array) || record_or_collection.is_a?(ActiveRecord::Relation) || (record_or_collection.is_a?(Class) && record_or_collection.ancestors.include?(ActiveRecord::Base))
           record_or_collection = record_or_collection.all if record_or_collection.is_a?(Class) && record_or_collection.ancestors.include?(ActiveRecord::Base)
@@ -27,14 +36,21 @@ module Dumpable
         else
           lines << new(record_or_collection, options).dump
         end
+
+        # Write file incrementally so we don't end up eating GBs of memory for large-scale dumps
+        Dumpable::FileWriter.write(lines.flatten.compact, options)
+        lines = []
       end
-      Dumpable::FileWriter.write(lines.flatten.compact, options)
     end
 
+    # ---------------------------------------------------------------------------
     private
+    # ---------------------------------------------------------------------------
+
+    # ---------------------------------------------------------------------------
     def recursive_dump(object, dumps)
       if dumps.nil?
-
+        # Base case recursion
       elsif dumps.is_a?(Array)
         dumps.each do |mini_dump|
           recursive_dump(object, mini_dump)
@@ -42,7 +58,10 @@ module Dumpable
       elsif dumps.is_a?(Hash)
         dumps.each do |key, value|
           recursive_dump(object, key)
-          Array(object.send(key)).each { |child| recursive_dump(child, value) }
+
+          Array(object.send(key)).each do |child|
+            recursive_dump(child, value)
+          end
         end
       elsif dumps.is_a?(Symbol) || dumps.is_a?(String)
         Array(object.send(dumps)).each do |child_object|
@@ -69,6 +88,7 @@ module Dumpable
       end
     end
 
+    # ---------------------------------------------------------------------------
     # http://invisipunk.blogspot.com/2008/04/activerecord-raw-insertupdate.html
     def generate_insert_query(object)
       skip_columns = Array(@options[:skip_columns] || (object.class.respond_to?(:dumpable_options) && object.class.dumpable_options[:skip_columns])).map(&:to_s)
