@@ -59,11 +59,14 @@ module Dumpable
         dumps.each do |key, value|
           recursive_dump(object, key)
 
-          Array(object.send(key)).each do |child|
+          Array(object.send(key).includes(value)).each do |child|
             recursive_dump(child, value)
           end
         end
       elsif dumps.is_a?(Symbol) || dumps.is_a?(String)
+        # E.g., object is `User`, dumps is `:posts`, so here we'll iterate over every post instance
+        # (here named `child_object`) and set its foreign key to correspond with the parent instance (usually
+        # the instance that invoked the call to dump, unless we're deeper in recursion when we arrive here)
         Array(object.send(dumps)).each do |child_object|
           reflection = object.class.reflections.symbolize_keys[dumps.to_sym]
 
