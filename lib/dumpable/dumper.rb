@@ -59,8 +59,14 @@ module Dumpable
         dumps.each do |key, value|
           recursive_dump(object, key)
 
-          Array(scoped_query(object, key).includes(value)).each do |child|
-            recursive_dump(child, value)
+          if scoped_query(object, key)
+            Array(scoped_query(object, key).includes(value)).each do |child|
+              recursive_dump(child, value)
+            end
+          else
+            puts "***********************************************************"
+            puts "NIL association of object #{ object.inspect }, key #{ key }"
+            puts "***********************************************************"
           end
         end
       elsif dumps.is_a?(Symbol) || dumps.is_a?(String)
