@@ -150,7 +150,7 @@ module Dumpable
         when "String"
           # String can't end with a backslash or it fouls up mysql parsing, and if we have a
           # single apostrophe, escape it:
-          "'#{ value.gsub(/'/, "\\\\'").gsub(/[\\]+$/, "") }'"
+          ActiveRecord::Base.sanitize(value)
         when "FalseClass"
           '0'
         when "TrueClass"
