@@ -64,9 +64,11 @@ module Dumpable
               recursive_dump(child, value)
             end
           else
-            puts "***********************************************************"
-            puts "NIL association of object #{ object.inspect }, key #{ key }"
-            puts "***********************************************************"
+            unless @options.quiet
+              puts "***********************************************************"
+              puts "NIL association of object #{ object.inspect }, key #{ key }"
+              puts "***********************************************************"
+            end
           end
         end
       elsif dumps.is_a?(Symbol) || dumps.is_a?(String)
@@ -95,8 +97,10 @@ module Dumpable
         end
       end
     rescue => e
-      puts "Error during processing: #{$!}"
-      puts "Backtrace:\n\t#{ e.backtrace.join("\n\t") }" # Avoid falling victim to the "... 15 other levels ..." stacktrace
+      unless @options.quiet
+        puts "Error during processing: #{$!}"
+        puts "Backtrace:\n\t#{ e.backtrace.join("\n\t") }" # Avoid falling victim to the "... 15 other levels ..." stacktrace
+      end
       raise
     end
 
