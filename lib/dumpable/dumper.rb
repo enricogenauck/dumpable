@@ -125,7 +125,7 @@ module Dumpable
     # http://invisipunk.blogspot.com/2008/04/activerecord-raw-insertupdate.html
     def generate_insert_query(object)
       skip_columns = Array(@options[:skip_columns] || (object.class.respond_to?(:dumpable_options) && object.class.dumpable_options[:skip_columns])).map(&:to_s)
-      cloned_attributes = object.attributes.clone
+      cloned_attributes = object.attributes_before_type_cast.clone
       return nil unless cloned_attributes["id"].present?
       cloned_attributes["id"] += @id_padding
       key_values = cloned_attributes.collect do |key,value|
