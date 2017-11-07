@@ -78,7 +78,7 @@ module Dumpable
         # (here named `child_object`) and set its foreign key to correspond with the parent instance (usually
         # the instance that invoked the call to dump, unless we're deeper in recursion when we arrive here)
         reflection = object.class.reflections.symbolize_keys[dumps.to_sym]
-        Array(scoped_query(object, dumps)).each do |child_object|
+        composed_objects = Array(scoped_query(object, dumps)).map do |child_object|
           unless reflection
             raise %{Couldn't find reflection "#{ dumps }" for object #{ object.inspect }}
           end
@@ -95,7 +95,12 @@ module Dumpable
               end
             end
           end
-          @lines << generate_insert_query(child_object)
+
+          child_object
+        end
+
+        if composed_objects.present?
+          @lines << generate_insert_query(composed_objects)
         end
       end
     rescue => e
@@ -122,19 +127,28 @@ module Dumpable
     end
 
     # ---------------------------------------------------------------------------
-    # http://invisipunk.blogspot.com/2008/04/activerecord-raw-insertupdate.html
-    def generate_insert_query(object)
+    def generate_insert_query(object_or_array)
+      object = object_or_array.is_a?(Array) ? object_or_array.first : object_or_array
+
       skip_columns = Array(@options[:skip_columns] || (object.class.respond_to?(:dumpable_options) && object.class.dumpable_options[:skip_columns])).map(&:to_s)
       cloned_attributes = object.attributes_before_type_cast.clone
       return nil unless cloned_attributes["id"].present?
       cloned_attributes["id"] += @id_padding
-      key_values = cloned_attributes.collect do |key,value|
-        [key, dump_value_string(value)] unless skip_columns.include?(key.to_s)
-      end.compact
-      keys = key_values.collect{ |item| "`#{item[0]}`" }.join(", ")
-      values = key_values.collect{ |item| item[1].to_s }.join(", ")
 
-      "INSERT #{ "IGNORE " if @options[:ignore_existing] }INTO #{object.class.table_name} (#{ keys }) VALUES (#{ values });"
+      keys = cloned_attributes.map do |key, _|
+        skip_columns.include?(key.to_s) ? nil : key
+      end.compact
+
+      # Resultant value a la: [ ["1", "bob", "taco"], ["2", "sam", "french fry"] ]
+      value_arrays = Array.wrap(object_or_array).map do |dumpable_object|
+        keys.map { |key| dump_value_string(dumpable_object[key]) }
+      end
+
+      # Resultant value a la: [ %{"1", "bob", "taco"}, %{"2", "sam", "french fry"} ]
+      value_arrays = value_arrays.map { |value_array| value_array.join(", ") }
+
+      mysql_keys = keys.map { |key| "`#{ key }`" }.join(", ")
+      "INSERT #{ "IGNORE " if @options[:ignore_existing] }INTO #{object.class.table_name} (#{ mysql_keys }) VALUES (#{ value_arrays.join("), (") });"
     end
 
     # ---------------------------------------------------------------------------
