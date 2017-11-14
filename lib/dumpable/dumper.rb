@@ -94,15 +94,17 @@ module Dumpable
             raise %{Couldn't find reflection "#{ dumps }" for object #{ object.inspect }}
           end
 
-          if reflection.macro == :belongs_to
-            object.send("#{reflection.association_foreign_key}=", object.id + @id_padding)
-          elsif [:has_many, :has_one].include? reflection.macro
-            # for a has_many through, leave the foreign key as-is
-            unless reflection.options[:through].present?
-              if reflection.respond_to?(:foreign_key)
-                child_object.send("#{reflection.foreign_key}=", object.id + @id_padding)
-              else
-                child_object.send("#{reflection.primary_key_name}=", object.id + @id_padding)
+          if @id_padding != 0
+            if reflection.macro == :belongs_to
+              object.send("#{reflection.association_foreign_key}=", child_object.id + @id_padding)
+            elsif [:has_many, :has_one].include? reflection.macro
+              # for a has_many through, leave the foreign key as-is
+              unless reflection.options[:through].present?
+                if reflection.respond_to?(:foreign_key)
+                  child_object.send("#{reflection.foreign_key}=", object.id + @id_padding)
+                else
+                  child_object.send("#{reflection.primary_key_name}=", object.id + @id_padding)
+                end
               end
             end
           end
