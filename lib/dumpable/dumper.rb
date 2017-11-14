@@ -138,7 +138,7 @@ module Dumpable
 
       scope = object.send(key)
       if reflection.macro == :has_many
-        scope = scope.limit(@options.limit) if @options.limit
+        scope = with_limit_applied(scope, reflection)
         scope = scope.order(@options.order) if @options.order
       end
 
@@ -212,6 +212,23 @@ module Dumpable
           "'#{value.to_yaml.gsub(/'/, "\\\\'")}'"
         else
           "'#{value}'"
+      end
+    end
+
+    # ---------------------------------------------------------------------------
+    def with_limit_applied(scope, reflection)
+      if @options.limit.nil?
+        scope
+      elsif @options.limit.is_a?(Integer)
+        scope.limit(@options.limit)
+      elsif @options.limit.is_a?(Hash)
+        if (reflection_limit = @options.limit[reflection.name])
+          scope.limit(reflection_limit)
+        else
+          scope
+        end
+      else
+        raise "Unimplemented limit type passed"
       end
     end
   end

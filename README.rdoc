@@ -67,7 +67,7 @@ Dumpable takes the following options
   *file*: Path to the file you'd like SQL dumped to
   *id_padding*: A constant to add to the keys being dumped. For example, if `id_padding: 1000`, this will ensure that the id of the above user is padded by 1000, so a user id of 1 will generate an insert statement with an id of 1001. (untested)
   *ignore_existing*: If true, statements will be dumped as `INSERT IGNORE INTO` so as not to cause errors if dupe records exist
-  *limit*: The maximum number of associations to be dumped for a given record. Default is 10,000
+  *limit*: Can be integer or hash. If integer, applies a global limit to the number of has_many associations that are imported. If hash, a limit is applied only when a matching reflection found. Examples: `limit: 1000` or `limit: { posts: 1000 }`
 
 == Dumping to a sql file
   User.dump(:file => PATH_TO_FILE)
