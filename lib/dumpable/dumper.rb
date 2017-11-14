@@ -193,26 +193,7 @@ module Dumpable
     # ---------------------------------------------------------------------------
     # http://invisipunk.blogspot.com/2008/04/activerecord-raw-insertupdate.html
     def dump_value_string(value)
-      case value.class.to_s
-        when "Time"
-          "'#{value.strftime("%Y-%m-%d %H:%M:%S")}'"
-        when "NilClass"
-          "NULL"
-        when "Fixnum"
-          value
-        when "String"
-          # String can't end with a backslash or it fouls up mysql parsing, and if we have a
-          # single apostrophe, escape it:
-          ActiveRecord::Base.sanitize(value)
-        when "FalseClass"
-          '0'
-        when "TrueClass"
-          '1'
-        when "ActiveSupport::HashWithIndifferentAccess"
-          "'#{value.to_yaml.gsub(/'/, "\\\\'")}'"
-        else
-          "'#{value}'"
-      end
+      ActiveRecord::Base.sanitize(value)
     end
 
     # ---------------------------------------------------------------------------
