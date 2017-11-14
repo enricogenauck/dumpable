@@ -144,6 +144,12 @@ module Dumpable
     end
 
     # ---------------------------------------------------------------------------
+    # To (maybe) do: as of 11/17, data that amounts to 25mb of dumped records currently eats up about
+    # 1.3gb to get built. The lion's share of this can prob be attributed to our storing all of our data in a comparatively
+    # complex structure (@objects is a hash of arrays). If we instead stored the contents of @objects as a string, by
+    # doing the composition that happens inside here in the #capture_objects method instead, we'd be likely to dramatically reduce
+    # the working memory needed to dump complex objects. Haven't done it yet because we'd still need some way to get the keys of the
+    # object when we were ready to build the actual INSERT query, requiring some code sharing between this method and #capture_objects.
     def generate_insert_query(object_or_array)
       object = object_or_array.is_a?(Array) ? object_or_array.first : object_or_array
 
