@@ -68,7 +68,6 @@ Dumpable takes the following options
   *id_padding*: A constant to add to the keys being dumped. For example, if `id_padding: 1000`, this will ensure that the id of the above user is padded by 1000, so a user id of 1 will generate an insert statement with an id of 1001.
   *ignore_existing*: If true, statements will be dumped as `INSERT IGNORE INTO` so as not to cause errors if dupe records exist
   *limit*: The maximum number of associations to be dumped for a given record. Default is 10,000
-  *skip_columns*: An array of columns not to dump from records (legacy + untested)
 
 == Dumping to a sql file
   User.dump(:file => PATH_TO_FILE)

@@ -152,19 +152,17 @@ module Dumpable
     # object when we were ready to build the actual INSERT query, requiring some code sharing between this method and #capture_objects.
     def generate_insert_query(object_or_array)
       object = object_or_array.is_a?(Array) ? object_or_array.first : object_or_array
-
-      skip_columns = Array(@options[:skip_columns] || (object.class.respond_to?(:dumpable_options) && object.class.dumpable_options[:skip_columns])).map(&:to_s)
-      cloned_attributes = object.attributes_before_type_cast.clone
-      return nil unless cloned_attributes["id"].present?
-      cloned_attributes["id"] += @id_padding
-
-      keys = cloned_attributes.map do |key, _|
-        skip_columns.include?(key.to_s) ? nil : key
-      end.compact
+      keys = object.attributes.keys
 
       # Resultant value a la: [ ["1", "bob", "taco"], ["2", "sam", "french fry"] ]
       value_arrays = Array.wrap(object_or_array).map do |dumpable_object|
-        keys.map { |key| dump_value_string(dumpable_object[key]) }
+        keys.map do |key|
+          if @id_padding && key == "id"
+            dump_value_string(dumpable_object[:id] + @id_padding)
+          else
+            dump_value_string(dumpable_object.attributes_before_type_cast[key])
+          end
+        end
       end
 
       # The purpose of this inject is solely to split an insert that might exceed Mysql's `max_packet_size` into bite sized
