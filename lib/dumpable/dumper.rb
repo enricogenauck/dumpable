@@ -8,12 +8,18 @@ module Dumpable
       @options = Dumpable.config.merge(options || {})
       @id_padding = @options[:id_padding] || (@dumpee.class.respond_to?(:dumpable_options) && @dumpee.class.dumpable_options[:id_padding]) || Dumpable.config.id_padding
       @dumps = @options[:dumps] || (@dumpee.class.respond_to?(:dumpable_options) && @dumpee.class.dumpable_options[:dumps])
+      @objects = {}
       @lines = []
     end
 
     # ---------------------------------------------------------------------------
     def dump
       recursive_dump(@dumpee, @dumps)
+
+      @objects.values.each do |object_array|
+        @lines << generate_insert_query(object_array)
+      end
+
       @lines << generate_insert_query(@dumpee)
     end
 
@@ -28,8 +34,13 @@ module Dumpable
       end
 
       records_and_collections.each do |record_or_collection|
-        if record_or_collection.is_a?(Array) || record_or_collection.is_a?(ActiveRecord::Relation) || (record_or_collection.is_a?(Class) && record_or_collection.ancestors.include?(ActiveRecord::Base))
-          record_or_collection = record_or_collection.all if record_or_collection.is_a?(Class) && record_or_collection.ancestors.include?(ActiveRecord::Base)
+        if record_or_collection.is_a?(Array) || record_or_collection.is_a?(ActiveRecord::Relation) ||
+            (record_or_collection.is_a?(Class) && record_or_collection.ancestors.include?(ActiveRecord::Base))
+
+          if record_or_collection.is_a?(Class) && record_or_collection.ancestors.include?(ActiveRecord::Base)
+            record_or_collection = record_or_collection.all
+          end
+
           record_or_collection.each do |object|
             lines << new(object, options).dump
           end
@@ -100,7 +111,7 @@ module Dumpable
         end
 
         if composed_objects.present?
-          @lines << generate_insert_query(composed_objects)
+          capture_objects(composed_objects)
         end
       end
     rescue => e
@@ -109,6 +120,12 @@ module Dumpable
         puts "Backtrace:\n\t#{ e.backtrace.join("\n\t") }" # Avoid falling victim to the "... 15 other levels ..." stacktrace
       end
       raise
+    end
+
+    # ---------------------------------------------------------------------------
+    def capture_objects(composed_objects)
+      @objects[composed_objects.first.class] ||= []
+      @objects[composed_objects.first.class] += Array.wrap(composed_objects).compact
     end
 
     # ---------------------------------------------------------------------------
