@@ -161,11 +161,27 @@ module Dumpable
         keys.map { |key| dump_value_string(dumpable_object[key]) }
       end
 
-      # Resultant value a la: [ %{"1", "bob", "taco"}, %{"2", "sam", "french fry"} ]
-      value_arrays = value_arrays.map { |value_array| value_array.join(", ") }
+      # The purpose of this inject is solely to split an insert that might exceed Mysql's `max_packet_size` into bite sized
+      # increments that will be less than default `max_packet_size`
+      # Resultant value a la: [ [ %{"1", "bob", "taco"}, %{"2", "sam", "french fry"} ], [ %{"3", "bill", "tex mex"} ] ]
+      result_arrays = [[]]
+      array_size = 0
+      while (value_array = value_arrays.shift)
+        value_string = value_array.join(", ")
+        array_size += value_string.size
+
+        if array_size > 3_000_000
+          result_arrays << []
+          array_size = 0
+        end
+
+        result_arrays.last << value_string
+      end
 
       mysql_keys = keys.map { |key| "`#{ key }`" }.join(", ")
-      "INSERT #{ "IGNORE " if @options[:ignore_existing] }INTO #{object.class.table_name} (#{ mysql_keys }) VALUES (#{ value_arrays.join("), (") });"
+      result_arrays.map do |array|
+        "INSERT #{ "IGNORE " if @options[:ignore_existing] }INTO #{ object.class.table_name } (#{ mysql_keys }) VALUES (#{ array.join("), (") });"
+      end.join("\n")
     end
 
     # ---------------------------------------------------------------------------
