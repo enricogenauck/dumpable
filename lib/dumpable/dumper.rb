@@ -72,7 +72,7 @@ module Dumpable
 
           if scoped_query(object, key)
             scope = scoped_query(object, key)
-            scope = scope.includes(value) if scope.is_a?(Repo::ActiveRecord_Relation)
+            scope = scope.includes(value) if scope.is_a?(ActiveRecord::Relation)
             Array(scope).each do |child|
               recursive_dump(child, value)
             end
