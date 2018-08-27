@@ -10,7 +10,8 @@ module Dumpable
       @dumps = @options[:dumps] || (@dumpee.class.respond_to?(:dumpable_options) && @dumpee.class.dumpable_options[:dumps])
       @print_timing = @options[:print_timing]
       @logger = options[:logger] || Rails.logger
-      @last_logged_line = nil
+      @print_interval = options[:print_interval] || 1_000
+      @print_interval_counter = 0
       @dump_times = Hash.new(0)
       @objects = {}
       @lines = []
@@ -97,7 +98,6 @@ module Dumpable
         # (here named `child_object`) and set its foreign key to correspond with the parent instance (usually
         # the instance that invoked the call to dump, unless we're deeper in recursion when we arrive here)
         reflection = object.class.reflections.symbolize_keys[dumps.to_sym]
-        composed_objects = nil
 
         time_to_compose = Benchmark.realtime do
           composed_objects = Array(scoped_query(object, dumps)).map do |child_object|
@@ -122,21 +122,21 @@ module Dumpable
 
             child_object
           end
-        end
 
-        time_to_compose *= 1000 # Convert to milliseconds
-        @dump_times[dumps] += time_to_compose
-
-        if @print_timing
-          this_update = "[dumpable] Spent #{ time_to_compose.round }ms to build #{ dumps }. Total #{ dumps } time: #{ @dump_times[dumps].round }ms"
-          unless this_update == @last_logged_line
-            @last_logged_line = this_update
-            @logger.info this_update
+          if composed_objects.present?
+            capture_objects(composed_objects)
           end
         end
 
-        if composed_objects.present?
-          capture_objects(composed_objects)
+        if @print_timing
+          @dump_times[dumps] += time_to_compose * 1000 # Convert to milliseconds
+
+          @print_interval_counter += 1
+          if (@print_interval_counter % @print_interval) == 0
+            sorted_dump_times = @dump_times.sort_by(&:last).reverse
+            sorted_dump_times = sorted_dump_times.inject([]) { |arr, (k, v)| arr << "#{ k }: #{ v.round }ms" }.join(". ")
+            @logger.info "[dumpable] #{ sorted_dump_times }"
+          end
         end
       end
     rescue => e
