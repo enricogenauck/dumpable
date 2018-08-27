@@ -20,7 +20,7 @@ module Dumpable
     def dump
       recursive_dump(@dumpee, @dumps)
 
-      @logger.info("Final record assembly time elapsed: #{ @dump_times.inspect }") if @print_timing
+      @logger.info("[dumpable] Final record assembly time elapsed: #{ @dump_times.inspect }") if @print_timing
 
       @objects.values.each do |object_array|
         @lines << generate_insert_query(object_array)
@@ -59,7 +59,7 @@ module Dumpable
         lines = []
       end
 
-      @logger.info("Final record assembly time elapsed: #{ @dump_times.inspect }") if @print_timing
+      @logger.info("[dumpable] Final record assembly time elapsed: #{ @dump_times.inspect }") if @print_timing
     end
 
     # ---------------------------------------------------------------------------
@@ -128,7 +128,7 @@ module Dumpable
         @dump_times[dumps] += time_to_compose
 
         if @print_timing
-          this_update = "Spent #{ time_to_compose.round }ms to build #{ dumps }. Total #{ dumps } time: #{ @dump_times[dumps].round }ms"
+          this_update = "[dumpable] Spent #{ time_to_compose.round }ms to build #{ dumps }. Total #{ dumps } time: #{ @dump_times[dumps].round }ms"
           unless this_update == @last_logged_line
             @last_logged_line = this_update
             @logger.info this_update
