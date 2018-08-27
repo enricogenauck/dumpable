@@ -8,6 +8,10 @@ module Dumpable
       @options = Dumpable.config.merge(options || {})
       @id_padding = @options[:id_padding] || (@dumpee.class.respond_to?(:dumpable_options) && @dumpee.class.dumpable_options[:id_padding]) || Dumpable.config.id_padding
       @dumps = @options[:dumps] || (@dumpee.class.respond_to?(:dumpable_options) && @dumpee.class.dumpable_options[:dumps])
+      @print_timing = @options[:print_timing]
+      @logger = options[:logger] || Rails.logger
+      @last_logged_line = nil
+      @dump_times = Hash.new(0)
       @objects = {}
       @lines = []
     end
@@ -15,6 +19,8 @@ module Dumpable
     # ---------------------------------------------------------------------------
     def dump
       recursive_dump(@dumpee, @dumps)
+
+      @logger.info("Final record assembly time elapsed: #{ @dump_times.inspect }") if @print_timing
 
       @objects.values.each do |object_array|
         @lines << generate_insert_query(object_array)
@@ -52,6 +58,8 @@ module Dumpable
         Dumpable::FileWriter.write(lines.flatten.compact, options)
         lines = []
       end
+
+      @logger.info("Final record assembly time elapsed: #{ @dump_times.inspect }") if @print_timing
     end
 
     # ---------------------------------------------------------------------------
@@ -89,27 +97,42 @@ module Dumpable
         # (here named `child_object`) and set its foreign key to correspond with the parent instance (usually
         # the instance that invoked the call to dump, unless we're deeper in recursion when we arrive here)
         reflection = object.class.reflections.symbolize_keys[dumps.to_sym]
-        composed_objects = Array(scoped_query(object, dumps)).map do |child_object|
-          unless reflection
-            raise %{Couldn't find reflection "#{ dumps }" for object #{ object.inspect }}
-          end
+        composed_objects = nil
 
-          if @id_padding != 0
-            if reflection.macro == :belongs_to
-              object.send("#{reflection.association_foreign_key}=", child_object.id + @id_padding)
-            elsif [:has_many, :has_one].include? reflection.macro
-              # for a has_many through, leave the foreign key as-is
-              unless reflection.options[:through].present?
-                if reflection.respond_to?(:foreign_key)
-                  child_object.send("#{reflection.foreign_key}=", object.id + @id_padding)
-                else
-                  child_object.send("#{reflection.primary_key_name}=", object.id + @id_padding)
+        time_to_compose = Benchmark.realtime do
+          composed_objects = Array(scoped_query(object, dumps)).map do |child_object|
+            unless reflection
+              raise %{Couldn't find reflection "#{ dumps }" for object #{ object.inspect }}
+            end
+
+            if @id_padding != 0
+              if reflection.macro == :belongs_to
+                object.send("#{reflection.association_foreign_key}=", child_object.id + @id_padding)
+              elsif [:has_many, :has_one].include? reflection.macro
+                # for a has_many through, leave the foreign key as-is
+                unless reflection.options[:through].present?
+                  if reflection.respond_to?(:foreign_key)
+                    child_object.send("#{reflection.foreign_key}=", object.id + @id_padding)
+                  else
+                    child_object.send("#{reflection.primary_key_name}=", object.id + @id_padding)
+                  end
                 end
               end
             end
-          end
 
-          child_object
+            child_object
+          end
+        end
+
+        time_to_compose *= 1000 # Convert to milliseconds
+        @dump_times[dumps] += time_to_compose
+
+        if @print_timing
+          this_update = "Spent #{ time_to_compose.round }ms to build #{ dumps }. Total #{ dumps } time: #{ @dump_times[dumps].round }ms"
+          unless this_update == @last_logged_line
+            @last_logged_line = this_update
+            @logger.info this_update
+          end
         end
 
         if composed_objects.present?
