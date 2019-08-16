@@ -216,7 +216,7 @@ module Dumpable
     # ---------------------------------------------------------------------------
     # http://invisipunk.blogspot.com/2008/04/activerecord-raw-insertupdate.html
     def dump_value_string(value)
-      ActiveRecord::Base.sanitize(value)
+      ActiveRecord::Base.connection.quote(value)
     end
 
     # ---------------------------------------------------------------------------
