@@ -217,7 +217,7 @@ module Dumpable
     # http://invisipunk.blogspot.com/2008/04/activerecord-raw-insertupdate.html
     # See also: https://stackoverflow.com/questions/44575106/undefined-method-sanitize-for-activerecordbase
     def dump_value_string(value)
-      ActiveRecord::Base.connection.quote(value)
+      ActiveRecord::Base.connection.quote_string(value)
     end
 
     # ---------------------------------------------------------------------------
