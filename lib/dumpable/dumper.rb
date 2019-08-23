@@ -177,7 +177,7 @@ module Dumpable
     # object when we were ready to build the actual INSERT query, requiring some code sharing between this method and #capture_objects.
     def generate_insert_query(object_or_array)
       object = object_or_array.is_a?(Array) ? object_or_array.first : object_or_array
-      keys = object.attributes.keys
+      keys = object.class.column_names
 
       # Resultant value a la: [ ["1", "bob", "taco"], ["2", "sam", "french fry"] ]
       value_arrays = Array.wrap(object_or_array).map do |dumpable_object|
