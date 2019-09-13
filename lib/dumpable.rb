@@ -10,6 +10,10 @@ module Dumpable
   mattr_accessor :config
   @@config = Hashie::Mash.new
   @@config.id_padding = 0
+  @@config.limit = 10_000
+  @@config.order = nil
+  @@config.ignore_existing = false
+  @@config.quiet = false
 
   def self.dump(*records_and_collections)
     Dumpable::Dumper.dump(*records_and_collections)
