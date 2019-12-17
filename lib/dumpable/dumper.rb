@@ -65,8 +65,9 @@ module Dumpable
     def generate_insert_query(object)
       skip_columns = Array(@options[:skip_columns] || (object.class.respond_to?(:dumpable_options) && object.class.dumpable_options[:skip_columns])).map(&:to_s)
       cloned_attributes = object.attributes.clone
-      return nil unless cloned_attributes["id"].present?
-      cloned_attributes["id"] += @id_padding
+
+      cloned_attributes["id"] += @id_padding if cloned_attributes["id"].present?
+
       key_values = cloned_attributes.collect do |key,value|
         [key, dump_value_string(value)] unless skip_columns.include?(key.to_s)
       end.compact
